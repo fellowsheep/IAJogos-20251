@@ -1,4 +1,14 @@
-# AISnakeBot2020
-Um framework didático para o desenvolvimento de agentes (bots) em um jogo "fortemente" inspirado no Slither.io. #madewithunity
+## 📦 Repositório Original
 
-#edicao do frost
+[https://github.com/fellowsheep/IA2022-2](https://github.com/fellowsheep/IA2022-2)
+
+---
+
+## 📚 Referências
+
+- Millington, I. (2019). *AI for Games* (3rd ed.). CRC Press.
+- Slither.io[: ](https://slither.io)[https://slither.io](https://slither.io)
+
+---
+
+**Desenvolvido para fins didáticos.** 🎓
