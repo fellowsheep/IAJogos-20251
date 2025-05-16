@@ -211,10 +211,39 @@ public class RunAStar: MonoBehaviour
         }
     }
 
-    void Start()
+    void PrintGrid(SquareGrid grid)
+    {
+        for (int y = grid.height - 1; y >= 0; y--)
+        {
+            string line = "";
+            for (int x = 0; x < grid.width; x++)
+            {
+                var loc = new Location(x, y);
+                if (grid.walls.Contains(loc))
+                {
+                    line += "#";
+                }
+                else if (grid.forests.Contains(loc))
+                {
+                    line += "F";
+                }
+                else
+                {
+                    line += ".";
+                }
+            }
+            Debug.Log(line);
+        }
+    }
+
+    public SquareGrid grid = null;
+
+
+    void InitializeGrid()
     {
         // Make "diagram 4" from main article
-        var grid = new SquareGrid(10, 10);
+        grid = new SquareGrid(10, 10);
+
         for (var x = 1; x < 4; x++)
         {
             for (var y = 7; y < 9; y++)
@@ -239,11 +268,216 @@ public class RunAStar: MonoBehaviour
                 new Location(7, 3), new Location(7, 4),
                 new Location(7, 5)
             };
-
-        // Run A*
-        var astar = new AStarSearch(grid, new Location(1, 4),
-                                    new Location(8, 5));
-
-        DrawGrid(grid, astar);
     }
+
+    private const int GRID_WIDTH = 10;
+    private const int GRID_HEIGHT = 10;
+
+    int[,] CreateGrid()
+    {
+        int[,] maze = new int[GRID_HEIGHT, GRID_WIDTH]
+        {
+            {  1,   1,   1,   1,   1,   1,   1,   1,   1,   1 },
+            {  1,   2,   1,   2,   0,   0,   0,   0,   0,   1 },
+            {  1,   2,   1,   2,   0,   2,   2,   2,   2,   1 },
+            {  1,   2,   1,   2,   0,   0,   0,   0,   0,   1 },
+            {  1,   2,   1,   2,   1,   0,   1,   1,   1,   1 },
+            {  1,   2,   1,   2,   1,   0,   0,   0,   0,   1 },
+            {  1,   2,   2,   2,   1,   0,   2,   2,   2,   1 },
+            {  1,   2,   2,   2,   1,   0,   2,   2,   2,   1 },
+            {  1,   2,   2,   2,   1,   0,   0,   0,   0,   1 },
+            {  1,   1,   1,   1,   1,   1,   1,   1,   1,   1 }
+
+        };
+
+
+        grid = new SquareGrid(10, 10);
+
+        for (int i = 0; i < GRID_HEIGHT; i++)
+        {
+            for (int j = 0; j < GRID_WIDTH; j++)
+            {
+                if (maze[i, j] == 1) //pedra
+                {
+                    grid.walls.Add(new Location(j, i));
+                }
+                else if (maze[i, j] == 2) //floresta
+                {
+                    grid.forests.Add(new Location(j, i));
+                }
+            }
+
+        }
+        return maze;
+    }
+
+
+    //void OnDrawGizmos()
+    //{
+       
+    //    if (grid == null) InitializeGrid();  // Só desenha se já existir o grid
+
+    //    for (int x = 0; x < grid.width; x++)
+    //    {
+    //        for (int y = 0; y < grid.height; y++)
+    //        {
+    //            Vector3 pos = new Vector3(x, 0, y);
+    //            var loc = new Location(x, y);
+
+    //            if (grid.walls.Contains(loc))
+    //                Gizmos.color = Color.black;
+    //            else if (grid.forests.Contains(loc))
+    //                Gizmos.color = new Color(0.0f, 0.5f, 0.0f); // verde escuro para floresta
+    //            else
+    //                Gizmos.color = Color.white; // caminho normal
+
+    //            Gizmos.DrawCube(pos, Vector3.one * 0.9f); // Cubo levemente menor para dar espaço entre os tiles
+    //        }
+    //    }
+    //}
+
+    int[,] GenerateMaze(List<Location> path = null)
+    {
+        int[,] maze = new int[GRID_HEIGHT, GRID_WIDTH];
+
+        for (int y = grid.height - 1; y >= 0; y--)
+        {
+            for (int x = 0; x < grid.width; x++)
+            {
+                var loc = new Location(x, y);
+                if (grid.walls.Contains(loc))
+                {
+                    maze[y, x] = 1; //pedra
+                }
+                else if (grid.forests.Contains(loc))
+                {
+                    maze[y, x] = 2; //forest
+                }
+                else
+                {
+                    maze[y, x] = 0; //sand
+                }
+            }
+        }
+
+        if (path != null)
+        { 
+            for (int i = 0; i < path.Count; i++)
+            {
+                int x = path[i].x;
+                int y = path[i].y;
+                maze[y, x] = 3; //path
+
+            }
+        }
+        
+        return maze;
+    }
+
+
+    int[,] AddPathToMaze(List<Location> path, int[,] old_maze)
+    {
+        int[,] maze = old_maze;
+
+        for (int i = 0; i < path.Count; i++)
+        {
+            int x = path[i].x;
+            int y = path[i].y;
+            maze[y, x] = 3; //path
+        }
+
+        return maze;
+    }
+
+    List<Location> ReconstructPath(Location start, Location goal, Dictionary<Location, Location> cameFrom)
+    {
+        List<Location> path = new List<Location>();
+        Location current = goal;
+
+        if (!cameFrom.ContainsKey(goal))
+        {
+            return path; // caminho não encontrado
+        }
+
+        while (!current.Equals(start))
+        {
+            path.Add(current);
+            current = cameFrom[current];
+        }
+
+        path.Add(start); // opcional: adicionar o ponto de origem
+        path.Reverse();
+        return path;
+    }
+
+
+
+
+    public List<GameObject> tileset = new List<GameObject>();
+    public GameObject rat, cheese;
+
+    float tileWidth = 10.0f;
+    float tileDepth = 10.0f;
+
+    float xi = -25.0f;
+    float zi = 25.0f;
+
+    void Start()
+    {
+        //if (grid == null) InitializeGrid();
+
+        int[,] maze = CreateGrid();
+
+
+        //Location start = new Location(1, 4);
+        Location start = new Location(1, 1);
+        Location goal = new Location(8, 5);
+        
+
+        // Roda A*
+        var astar = new AStarSearch(grid, start,
+                                    goal);
+
+        List<Location> path = ReconstructPath(start, goal, astar.cameFrom);
+        // Desenhar a grid depois da aplicação do A*
+
+        //Gerando a matriz de índices baseado na grid
+        //int[,] maze = GenerateMaze();
+        //int[,] maze = GenerateMaze(path);
+        maze = AddPathToMaze(path, maze);
+
+        for (int i = 0; i < GRID_HEIGHT; i++) //z
+        {
+            for (int j = 0; j < GRID_WIDTH; j++) //x
+            {
+                GameObject tilePrefab = tileset[maze[i, j]];
+                Vector3 p = tilePrefab.transform.position;
+                p.x = xi + j * tileWidth;
+                p.z = zi - i * tileDepth;
+
+                GameObject newTile = Instantiate(tilePrefab, p, Quaternion.identity) as GameObject;
+
+            }
+        }
+
+
+        //DrawGrid(grid, astar);
+
+
+        Vector3 posRat = new Vector3(xi + start.x * tileWidth, 0.34f, zi - start.y * tileDepth);
+        Vector3 posCheese = new Vector3(xi + goal.x * tileWidth, 4.4f, zi - goal.y * tileDepth);
+        
+        rat.transform.position = posRat;
+        cheese.transform.position = posCheese;  
+        
+   
+       
+    }
+
+    
+
+
+
+
+
 }
